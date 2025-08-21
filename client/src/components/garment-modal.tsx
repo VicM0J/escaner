@@ -1,5 +1,4 @@
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
-import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Printer, Edit, Calendar, Image as ImageIcon } from "lucide-react";
@@ -41,7 +40,7 @@ export default function GarmentModal({ garment, isOpen, onClose }: GarmentModalP
       'morado': 'bg-purple-500',
       'naranja': 'bg-orange-500',
     };
-    
+
     const normalizedColor = color.toLowerCase();
     return colorMap[normalizedColor] || 'bg-gray-400';
   };
@@ -54,13 +53,13 @@ export default function GarmentModal({ garment, isOpen, onClose }: GarmentModalP
             Información de la Prenda - {garment.codigo}
           </DialogTitle>
         </DialogHeader>
-        
+
         <Tabs defaultValue="info" className="w-full">
           <TabsList className="grid w-full grid-cols-2">
             <TabsTrigger value="info">Información</TabsTrigger>
             <TabsTrigger value="image">Imagen</TabsTrigger>
           </TabsList>
-          
+
           <TabsContent value="info" className="space-y-6">
           {/* Garment Code Header */}
           <div className="bg-primary rounded-lg text-white p-4 text-center">
@@ -81,7 +80,7 @@ export default function GarmentModal({ garment, isOpen, onClose }: GarmentModalP
                   {garment.area}
                 </div>
               </div>
-              
+
               <div className="bg-gray-50 rounded-lg p-4">
                 <div className="text-sm font-medium text-gray-500 uppercase tracking-wide mb-1">
                   Categoría
@@ -90,7 +89,7 @@ export default function GarmentModal({ garment, isOpen, onClose }: GarmentModalP
                   {garment.dama_cab}
                 </div>
               </div>
-              
+
               <div className="bg-gray-50 rounded-lg p-4">
                 <div className="text-sm font-medium text-gray-500 uppercase tracking-wide mb-1">
                   Prenda
@@ -99,7 +98,7 @@ export default function GarmentModal({ garment, isOpen, onClose }: GarmentModalP
                   {garment.prenda}
                 </div>
               </div>
-              
+
               <div className="bg-gray-50 rounded-lg p-4">
                 <div className="text-sm font-medium text-gray-500 uppercase tracking-wide mb-1">
                   Modelo
@@ -109,7 +108,7 @@ export default function GarmentModal({ garment, isOpen, onClose }: GarmentModalP
                 </div>
               </div>
             </div>
-            
+
             <div className="space-y-4">
               <div className="bg-gray-50 rounded-lg p-4">
                 <div className="text-sm font-medium text-gray-500 uppercase tracking-wide mb-1">
@@ -119,7 +118,7 @@ export default function GarmentModal({ garment, isOpen, onClose }: GarmentModalP
                   {garment.tela}
                 </div>
               </div>
-              
+
               <div className="bg-gray-50 rounded-lg p-4">
                 <div className="text-sm font-medium text-gray-500 uppercase tracking-wide mb-1">
                   Color
@@ -134,7 +133,7 @@ export default function GarmentModal({ garment, isOpen, onClose }: GarmentModalP
                   </div>
                 </div>
               </div>
-              
+
               <div className="bg-gray-50 rounded-lg p-4">
                 <div className="text-sm font-medium text-gray-500 uppercase tracking-wide mb-1">
                   Ficha de Bordado
@@ -176,7 +175,7 @@ export default function GarmentModal({ garment, isOpen, onClose }: GarmentModalP
               </Button>
             </div>
           </TabsContent>
-          
+
           <TabsContent value="image" className="space-y-6">
             {/* Image Display */}
             <div className="text-center">
@@ -202,7 +201,7 @@ export default function GarmentModal({ garment, isOpen, onClose }: GarmentModalP
                 </div>
               )}
             </div>
-            
+
             {/* Image Upload */}
             <div className="border-t pt-6">
               <h3 className="text-lg font-semibold mb-4">Subir nueva imagen</h3>

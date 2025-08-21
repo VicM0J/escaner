@@ -39,20 +39,20 @@ const imageUpload = multer({
 });
 
 export async function registerRoutes(app: Express): Promise<Server> {
-  
+
   // Get garment by code
   app.get("/api/garments/:code", async (req, res) => {
     try {
       const { code } = req.params;
       const garment = await storage.getGarmentByCode(code);
-      
+
       if (!garment) {
         return res.status(404).json({ 
           message: "Prenda no encontrada",
           error: "GARMENT_NOT_FOUND" 
         });
       }
-      
+
       res.json(garment);
     } catch (error) {
       console.error("Error fetching garment:", error);
@@ -77,7 +77,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  // Upload Excel file and process garments
+  // Upload Excel file with garments data
   app.post("/api/garments/upload", upload.single('file'), async (req, res) => {
     try {
       if (!req.file) {
@@ -87,168 +87,158 @@ export async function registerRoutes(app: Express): Promise<Server> {
         });
       }
 
-      // Parse Excel file
+      console.log('Processing Excel file...');
+
+      // Read Excel file
       const workbook = XLSX.read(req.file.buffer, { type: 'buffer' });
       const sheetName = workbook.SheetNames[0];
       const worksheet = workbook.Sheets[sheetName];
-      const jsonData = XLSX.utils.sheet_to_json(worksheet, { header: 1 });
 
-      if (jsonData.length === 0) {
+      // Convert to JSON
+      const rawData = XLSX.utils.sheet_to_json(worksheet, { header: 1 });
+
+      if (rawData.length < 2) {
         return res.status(400).json({ 
-          message: "El archivo Excel está vacío",
-          error: "EMPTY_FILE" 
+          message: "El archivo debe contener al menos una fila de datos",
+          error: "INSUFFICIENT_DATA" 
         });
       }
 
-      // Get headers and data rows
-      const headers = jsonData[0] as string[];
-      const dataRows = jsonData.slice(1);
+      // Get headers and find column indices
+      const headers = rawData[0] as string[];
+      console.log('Headers found:', headers);
 
-      console.log("Headers found:", headers);
-      console.log("First row of data:", dataRows[0]);
-
-      if (dataRows.length === 0) {
-        return res.status(400).json({ 
-          message: "El archivo Excel no tiene datos",
-          error: "NO_DATA" 
-        });
-      }
-
-      // Transform Excel data to match our schema
-      const garments = [];
-      const errors = [];
-      const seenCodes = new Set<string>();
-      
-      // Find column indices
-      const getColumnIndex = (possibleNames: string[]) => {
-        for (const name of possibleNames) {
-          const index = headers.findIndex(h => h && h.toString().toLowerCase().includes(name.toLowerCase()));
-          if (index !== -1) return index;
-        }
-        return -1;
+      const columnMap = {
+        codigo: headers.findIndex(h => h?.toUpperCase().includes('CÓDIGO')),
+        area: headers.findIndex(h => h?.toUpperCase().includes('ÁREA')),
+        damaCab: headers.findIndex(h => h?.toUpperCase().includes('DAMA') || h?.toUpperCase().includes('CAB')),
+        prenda: headers.findIndex(h => h?.toUpperCase().includes('PRENDA')),
+        modelo: headers.findIndex(h => h?.toUpperCase().includes('MODELO')),
+        tela: headers.findIndex(h => h?.toUpperCase().includes('TELA')),
+        color: headers.findIndex(h => h?.toUpperCase().includes('COLOR')),
+        ficha: headers.findIndex(h => h?.toUpperCase().includes('FICHA') && h?.toUpperCase().includes('BORDADO'))
       };
 
-      const codigoIndex = getColumnIndex(['código', 'codigo']);
-      const areaIndex = getColumnIndex(['área', 'area']);
-      const damaCabIndex = getColumnIndex(['dama', 'cab']);
-      const prendaIndex = getColumnIndex(['prenda']);
-      const modeloIndex = getColumnIndex(['modelo']);
-      const telaIndex = getColumnIndex(['tela']);
-      const colorIndex = getColumnIndex(['color']);
-      const fichaIndex = getColumnIndex(['ficha', 'bordado']);
+      // Validate required columns exist
+      const missingColumns = Object.entries(columnMap)
+        .filter(([_, index]) => index === -1)
+        .map(([key]) => key);
 
-      console.log("Column indices:", {
-        codigo: codigoIndex,
-        area: areaIndex,
-        damaCab: damaCabIndex,
-        prenda: prendaIndex,
-        modelo: modeloIndex,
-        tela: telaIndex,
-        color: colorIndex,
-        ficha: fichaIndex
-      });
+      if (missingColumns.length > 0) {
+        return res.status(400).json({ 
+          message: `Columnas faltantes: ${missingColumns.join(', ')}`,
+          error: "MISSING_COLUMNS" 
+        });
+      }
 
-      for (let i = 0; i < dataRows.length; i++) {
-        const row = dataRows[i] as any[];
-        console.log(`Starting to process row ${i + 2}:`, row);
-        
+      console.log('First row of data:', rawData[1]);
+      console.log('Column indices:', columnMap);
+
+      // Process data rows
+      const validGarments: any[] = [];
+      const errors: string[] = [];
+      const seenCodes = new Set<string>();
+
+      for (let i = 1; i < rawData.length; i++) {
+        const row = rawData[i] as any[];
+
         try {
-          const garment = {
-            codigo: (row[codigoIndex] || '').toString().trim(),
-            area: (row[areaIndex] || '').toString().trim(),
-            dama_cab: (row[damaCabIndex] || '').toString().trim(),
-            prenda: (row[prendaIndex] || '').toString().trim(),
-            modelo: (row[modeloIndex] || '').toString().trim(),
-            tela: (row[telaIndex] || '').toString().trim(),
-            color: (row[colorIndex] || '').toString().trim(),
-            ficha_bordado: (row[fichaIndex] || '').toString().trim()
+          console.log(`Starting to process row ${i + 1}:`, row);
+
+          // Create garment object
+          const garmentData = {
+            codigo: String(row[columnMap.codigo] || '').trim(),
+            area: String(row[columnMap.area] || '').trim(),
+            dama_cab: String(row[columnMap.damaCab] || '').trim(),
+            prenda: String(row[columnMap.prenda] || '').trim(),
+            modelo: String(row[columnMap.modelo] || '').trim(),
+            tela: String(row[columnMap.tela] || '').trim(),
+            color: String(row[columnMap.color] || '').trim(),
+            ficha_bordado: String(row[columnMap.ficha] || '').trim()
           };
 
-          console.log(`Row ${i + 2} data created successfully:`, garment);
+          console.log(`Row ${i + 1} data created successfully:`, garmentData);
 
           // Skip empty rows
-          console.log(`Checking codigo for row ${i + 2}: "${garment.codigo}" (type: ${typeof garment.codigo}, length: ${garment.codigo?.length || 0})`);
-          if (!garment.codigo) {
-            errors.push({
-              row: i + 2,
-              error: 'Código vacío - fila omitida'
-            });
-            console.log(`Skipping row ${i + 2}: empty codigo`);
+          if (!garmentData.codigo) {
+            console.log(`Skipping row ${i + 1}: empty codigo`);
             continue;
           }
 
-          // Check for duplicate codes in the Excel file
-          if (seenCodes.has(garment.codigo)) {
-            console.log(`Duplicate code found: ${garment.codigo} in row ${i + 2}`);
-            errors.push({
-              row: i + 2,
-              error: `Código duplicado en el archivo: ${garment.codigo}`
-            });
+          console.log(`Checking codigo for row ${i + 1}: "${garmentData.codigo}" (type: ${typeof garmentData.codigo}, length: ${garmentData.codigo.length})`);
+
+          // Check for duplicate codes in this batch
+          if (seenCodes.has(garmentData.codigo)) {
+            errors.push(`Fila ${i + 1}: Código duplicado '${garmentData.codigo}'`);
             continue;
           }
-          seenCodes.add(garment.codigo);
-          console.log(`Code ${garment.codigo} added to seen codes, continuing to validation...`);
+          seenCodes.add(garmentData.codigo);
+          console.log(`Code ${garmentData.codigo} added to seen codes, continuing to validation...`);
 
-          console.log(`About to validate row ${i + 2}:`, garment);
-          // Validate the garment data
-          const validatedGarment = insertGarmentSchema.parse(garment);
-          console.log(`Validation successful for row ${i + 2}`);
-          garments.push(validatedGarment);
-        } catch (validationError) {
-          console.log(`Validation error for row ${i + 2}:`, validationError);
-          errors.push({
-            row: i + 2, // Excel rows start at 1, plus header
-            error: validationError instanceof z.ZodError 
-              ? validationError.errors.map(e => `${e.path.join('.')}: ${e.message}`).join(', ')
-              : 'Error de validación desconocido'
-          });
-        }
-      }
+          // Validate with schema
+          console.log(`About to validate row ${i + 1}:`, garmentData);
+          const validatedGarment = insertGarmentSchema.parse(garmentData);
+          console.log(`Validation successful for row ${i + 1}`);
 
-      console.log(`Processed ${garments.length} valid garments, ${errors.length} errors`);
-      console.log("Sample garments to insert:", garments.slice(0, 3));
-      console.log("All errors:", errors);
-
-      // Clear existing garments and insert new ones
-      await storage.deleteAllGarments();
-      
-      let successful = 0;
-      if (garments.length > 0) {
-        try {
-          // Filter out any garments with empty codes as a final check
-          const validGarments = garments.filter(g => g.codigo && g.codigo.trim() !== '');
-          console.log(`Inserting ${validGarments.length} garments after final validation`);
-          
-          if (validGarments.length === 0) {
-            return res.status(400).json({
-              message: "No se encontraron códigos válidos en el archivo",
-              error: "NO_VALID_CODES",
-              processed: garments.length,
-              errors: errors.length
-            });
+          validGarments.push(validatedGarment);
+        } catch (error: any) {
+          console.error(`Validation error for row ${i + 1}:`, error);
+          if (error instanceof z.ZodError) {
+            const fieldErrors = error.errors.map(e => `${e.path.join('.')}: ${e.message}`).join(', ');
+            errors.push(`Fila ${i + 1}: ${fieldErrors}`);
+          } else {
+            errors.push(`Fila ${i + 1}: Error procesando datos`);
           }
-          
-          const created = await storage.createGarments(validGarments);
-          successful = created.length;
-        } catch (dbError: any) {
-          console.error("Database error during bulk insert:", dbError);
-          return res.status(500).json({
-            message: "Error al insertar datos en la base de datos",
-            error: "DATABASE_INSERT_ERROR",
-            details: dbError.message
-          });
         }
       }
+
+      console.log(`Processed ${validGarments.length} valid garments, ${errors.length} errors`);
+      console.log('Sample garments to insert:', validGarments.slice(0, 3));
+      console.log('All errors:', errors);
+
+      // Insert/Update valid garments in batches to avoid memory issues
+      const batchSize = 100;
+      let totalCreated = 0;
+      let totalUpdated = 0;
+      let totalSkipped = 0;
+
+      try {
+        for (let i = 0; i < validGarments.length; i += batchSize) {
+          const batch = validGarments.slice(i, i + batchSize);
+          const result = await storage.upsertGarments(batch);
+          totalCreated += result.created.length;
+          totalUpdated += result.updated.length;
+          totalSkipped += result.skipped;
+        }
+
+        console.log(`Successfully processed ${totalCreated} new garments, ${totalUpdated} updated garments, ${totalSkipped} skipped`);
+      } catch (insertError) {
+        console.error('Error processing garments:', insertError);
+        return res.status(500).json({ 
+          message: "Error procesando datos en la base de datos",
+          error: "DATABASE_PROCESSING_ERROR" 
+        });
+      }
+
+      const stats = {
+        total: rawData.length - 1, // Exclude header
+        created: totalCreated,
+        updated: totalUpdated,
+        skipped: totalSkipped,
+        errors: errors.length,
+        warnings: 0
+      };
+
+      console.log('Final stats:', stats);
+
+      const message = totalCreated > 0 || totalUpdated > 0 
+        ? `Archivo procesado exitosamente: ${totalCreated} nuevos, ${totalUpdated} actualizados${totalSkipped > 0 ? `, ${totalSkipped} omitidos` : ''}`
+        : "Archivo procesado, no se realizaron cambios";
 
       res.json({
-        message: "Archivo procesado exitosamente",
-        stats: {
-          total: jsonData.length,
-          successful,
-          errors: errors.length,
-          warnings: 0
-        },
-        errors: errors.length > 0 ? errors : undefined
+        message,
+        stats,
+        errors: errors.slice(0, 10) // Limit errors shown
       });
 
     } catch (error) {
@@ -285,7 +275,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.post("/api/garments/:code/image", imageUpload.single('image'), async (req, res) => {
     try {
       const { code } = req.params;
-      
+
       if (!req.file) {
         return res.status(400).json({ 
           message: "No se proporcionó imagen",
@@ -296,7 +286,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       // Update garment with image URL
       const imageUrl = `/uploads/${req.file.filename}`;
       const updatedGarment = await storage.updateGarmentImage(code, imageUrl);
-      
+
       if (!updatedGarment) {
         // Delete uploaded file if garment not found
         fs.unlinkSync(req.file.path);
@@ -305,7 +295,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
           error: "GARMENT_NOT_FOUND" 
         });
       }
-      
+
       res.json({
         message: "Imagen subida exitosamente",
         garment: updatedGarment,

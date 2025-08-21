@@ -2,7 +2,9 @@ import { useState, useRef } from "react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { Progress } from "@/components/ui/progress";
-import { CloudUpload, FileSpreadsheet, CheckCircle, AlertTriangle, XCircle } from "lucide-react";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import { CloudUpload, FileSpreadsheet, CheckCircle, AlertTriangle, XCircle, Lock } from "lucide-react";
 import { useMutation } from "@tanstack/react-query";
 import { apiRequest } from "@/lib/queryClient";
 import { useToast } from "@/hooks/use-toast";
@@ -18,6 +20,7 @@ export default function ExcelUpload() {
   const [uploadProgress, setUploadProgress] = useState(0);
   const [uploadStats, setUploadStats] = useState<UploadStats | null>(null);
   const [isDragging, setIsDragging] = useState(false);
+  const [password, setPassword] = useState("");
   const fileInputRef = useRef<HTMLInputElement>(null);
   const { toast } = useToast();
 
@@ -25,7 +28,8 @@ export default function ExcelUpload() {
     mutationFn: async (file: File) => {
       const formData = new FormData();
       formData.append('file', file);
-      
+      formData.append('password', password);
+
       const response = await apiRequest('POST', '/api/garments/upload', formData);
       return response.json();
     },
@@ -56,9 +60,18 @@ export default function ExcelUpload() {
       return;
     }
 
+    if (!password.trim()) {
+      toast({
+        title: "Contraseña requerida",
+        description: "Por favor ingrese la contraseña antes de subir el archivo.",
+        variant: "destructive",
+      });
+      return;
+    }
+
     setUploadProgress(0);
     setUploadStats(null);
-    
+
     // Simulate upload progress
     const progressInterval = setInterval(() => {
       setUploadProgress(prev => {
@@ -91,7 +104,7 @@ export default function ExcelUpload() {
   const handleDrop = (e: React.DragEvent) => {
     e.preventDefault();
     setIsDragging(false);
-    
+
     const files = Array.from(e.dataTransfer.files);
     if (files.length > 0) {
       handleFileSelect(files[0]);
@@ -111,103 +124,168 @@ export default function ExcelUpload() {
   ];
 
   return (
-    <div className="space-y-8">
-      <div className="text-center">
-        <h2 className="text-3xl font-bold text-secondary mb-4">Cargar Datos desde Excel</h2>
-        <p className="text-gray-600 max-w-2xl mx-auto">
-          Importe los datos de prendas desde un archivo Excel con las columnas requeridas.
-        </p>
+    <div className="min-h-screen" style={{ background: 'linear-gradient(135deg, #2c234e 0%, #231c3e 100%)' }}>
+      <div className="container mx-auto px-6 py-12">
+        <div className="text-center mb-12">
+          <h2 className="text-4xl font-bold mb-4" style={{ color: '#d9d9d9' }}>
+            Cargar Datos desde Excel
+          </h2>
+          <p className="text-lg max-w-2xl mx-auto" style={{ color: '#737373' }}>
+            Importe los datos de prendas desde un archivo Excel con las columnas requeridas.
+          </p>
+        </div>
+
+        <Card className="max-w-5xl mx-auto shadow-2xl border-0" style={{ backgroundColor: '#d9d9d9' }}>
+          <CardContent className="p-10">
+            {/* File Upload Area */}
+            <div 
+              className={`border-2 border-dashed rounded-2xl p-16 text-center mb-8 transition-all duration-300 cursor-pointer ${
+                isDragging 
+                  ? 'scale-105 shadow-lg'
+                  : 'hover:scale-102 hover:shadow-md'
+              }`}
+              style={{ 
+                borderColor: isDragging ? '#2c234e' : '#737373',
+                backgroundColor: isDragging ? 'rgba(44, 35, 78, 0.1)' : 'transparent'
+              }}
+              onDragOver={handleDragOver}
+              onDragLeave={handleDragLeave}
+              onDrop={handleDrop}
+              onClick={() => fileInputRef.current?.click()}
+              data-testid="upload-area"
+            >
+              <CloudUpload 
+                className="mx-auto mb-6" 
+                size={64} 
+                style={{ color: '#737373' }}
+              />
+              <p className="text-2xl font-semibold mb-3" style={{ color: '#2c234e' }}>
+                Arrastre su archivo Excel aquí
+              </p>
+              <p className="text-lg mb-6" style={{ color: '#737373' }}>
+                o haga clic para seleccionar
+              </p>
+              <input
+                ref={fileInputRef}
+                type="file"
+                accept=".xlsx,.xls"
+                className="hidden"
+                onChange={handleFileInputChange}
+                data-testid="input-file-excel"
+              />
+              <Button 
+                className="px-8 py-3 text-lg font-semibold rounded-lg shadow-lg hover:shadow-xl transition-all duration-300 border-0"
+                style={{ 
+                  backgroundColor: '#2c234e', 
+                  color: '#d9d9d9',
+                }}
+              >
+                <FileSpreadsheet className="mr-3 h-5 w-5" />
+                Seleccionar Archivo
+              </Button>
+            </div>
+
+            {/* Password Input */}
+            <div className="mb-8">
+              <Label 
+                htmlFor="password" 
+                className="text-lg font-semibold mb-3 flex items-center"
+                style={{ color: '#2c234e' }}
+              >
+                <Lock className="mr-2 h-5 w-5" />
+                Contraseña de Seguridad
+              </Label>
+              <Input
+                id="password"
+                type="password"
+                value={password}
+                onChange={(e) => setPassword(e.target.value)}
+                placeholder="Ingrese la contraseña"
+                className="mt-3 p-4 text-lg border-2 rounded-lg"
+                style={{ 
+                  borderColor: '#737373',
+                  backgroundColor: 'white',
+                  color: '#2c234e'
+                }}
+              />
+            </div>
+
+            {/* Required Columns Information */}
+            <div 
+              className="rounded-xl p-8 mb-8 border-2"
+              style={{ 
+                backgroundColor: 'rgba(44, 35, 78, 0.1)', 
+                borderColor: '#2c234e'
+              }}
+            >
+              <h3 className="text-xl font-bold mb-6 flex items-center" style={{ color: '#2c234e' }}>
+                <CheckCircle className="mr-3 h-6 w-6" />
+                Columnas Requeridas
+              </h3>
+              <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+                {requiredColumns.map((column, index) => (
+                  <div key={index} className="flex items-center p-3 rounded-lg" style={{ backgroundColor: 'white' }}>
+                    <CheckCircle className="mr-3 h-4 w-4" style={{ color: '#2c234e' }} />
+                    <span className="font-medium" style={{ color: '#2c234e' }}>{column}</span>
+                  </div>
+                ))}
+              </div>
+            </div>
+
+            {/* Upload Progress */}
+            {(uploadMutation.isPending || uploadProgress > 0) && (
+              <div className="mb-8" data-testid="upload-progress">
+                <div className="flex justify-between items-center mb-4">
+                  <span className="text-lg font-semibold" style={{ color: '#2c234e' }}>
+                    {uploadMutation.isPending ? 'Procesando archivo...' : 'Completado'}
+                  </span>
+                  <span className="text-lg font-bold" style={{ color: '#2c234e' }}>{uploadProgress}%</span>
+                </div>
+                <Progress 
+                  value={uploadProgress} 
+                  className="w-full h-3 rounded-full"
+                />
+              </div>
+            )}
+
+            {/* Upload Results */}
+            {uploadStats && (
+              <div className="grid md:grid-cols-3 gap-8" data-testid="upload-results">
+                <div 
+                  className="rounded-xl p-6 text-center shadow-lg border-2"
+                  style={{ backgroundColor: 'white', borderColor: '#2c234e' }}
+                >
+                  <CheckCircle className="mx-auto mb-4" size={48} style={{ color: '#2c234e' }} />
+                  <div className="text-3xl font-bold mb-2" style={{ color: '#2c234e' }} data-testid="stat-successful">
+                    {uploadStats.successful}
+                  </div>
+                  <div className="text-lg font-medium" style={{ color: '#737373' }}>Registros Cargados</div>
+                </div>
+                <div 
+                  className="rounded-xl p-6 text-center shadow-lg border-2"
+                  style={{ backgroundColor: 'white', borderColor: '#737373' }}
+                >
+                  <AlertTriangle className="mx-auto mb-4" size={48} style={{ color: '#737373' }} />
+                  <div className="text-3xl font-bold mb-2" style={{ color: '#737373' }} data-testid="stat-warnings">
+                    {uploadStats.warnings}
+                  </div>
+                  <div className="text-lg font-medium" style={{ color: '#737373' }}>Advertencias</div>
+                </div>
+                <div 
+                  className="rounded-xl p-6 text-center shadow-lg border-2"
+                  style={{ backgroundColor: 'white', borderColor: '#737373' }}
+                >
+                  <XCircle className="mx-auto mb-4" size={48} style={{ color: '#737373' }} />
+                  <div className="text-3xl font-bold mb-2" style={{ color: '#737373' }} data-testid="stat-errors">
+                    {uploadStats.errors}
+                  </div>
+                  <div className="text-lg font-medium" style={{ color: '#737373' }}>Errores</div>
+                </div>
+              </div>
+            )}
+          </CardContent>
+        </Card>
       </div>
-
-      <Card className="max-w-4xl mx-auto">
-        <CardContent className="p-8">
-          {/* File Upload Area */}
-          <div 
-            className={`border-2 border-dashed rounded-xl p-12 text-center mb-6 transition-colors cursor-pointer ${
-              isDragging 
-                ? 'border-primary bg-blue-50' 
-                : 'border-gray-300 hover:border-primary'
-            }`}
-            onDragOver={handleDragOver}
-            onDragLeave={handleDragLeave}
-            onDrop={handleDrop}
-            onClick={() => fileInputRef.current?.click()}
-            data-testid="upload-area"
-          >
-            <CloudUpload className="mx-auto text-4xl text-gray-400 mb-4" />
-            <p className="text-xl font-medium text-secondary mb-2">Arrastre su archivo Excel aquí</p>
-            <p className="text-gray-500 mb-4">o haga clic para seleccionar</p>
-            <input
-              ref={fileInputRef}
-              type="file"
-              accept=".xlsx,.xls"
-              className="hidden"
-              onChange={handleFileInputChange}
-              data-testid="input-file-excel"
-            />
-            <Button className="bg-primary hover:bg-primary/90 text-white">
-              <FileSpreadsheet className="mr-2 h-4 w-4" />
-              Seleccionar Archivo
-            </Button>
-          </div>
-
-          {/* Required Columns Information */}
-          <div className="bg-blue-50 rounded-lg p-6 mb-6">
-            <h3 className="text-lg font-semibold text-secondary mb-3 flex items-center">
-              <CheckCircle className="text-primary mr-2" />
-              Columnas Requeridas
-            </h3>
-            <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-              {requiredColumns.map((column, index) => (
-                <div key={index} className="flex items-center text-sm">
-                  <CheckCircle className="text-success mr-2 h-4 w-4" />
-                  {column}
-                </div>
-              ))}
-            </div>
-          </div>
-
-          {/* Upload Progress */}
-          {(uploadMutation.isPending || uploadProgress > 0) && (
-            <div className="mb-6" data-testid="upload-progress">
-              <div className="flex justify-between items-center mb-2">
-                <span className="text-sm font-medium text-secondary">
-                  {uploadMutation.isPending ? 'Procesando archivo...' : 'Completado'}
-                </span>
-                <span className="text-sm text-secondary">{uploadProgress}%</span>
-              </div>
-              <Progress value={uploadProgress} className="w-full" />
-            </div>
-          )}
-
-          {/* Upload Results */}
-          {uploadStats && (
-            <div className="grid md:grid-cols-3 gap-6" data-testid="upload-results">
-              <div className="bg-green-50 rounded-lg p-4 text-center">
-                <CheckCircle className="mx-auto text-success text-2xl mb-2" />
-                <div className="text-2xl font-bold text-success" data-testid="stat-successful">
-                  {uploadStats.successful}
-                </div>
-                <div className="text-sm text-gray-600">Registros Cargados</div>
-              </div>
-              <div className="bg-yellow-50 rounded-lg p-4 text-center">
-                <AlertTriangle className="mx-auto text-warning text-2xl mb-2" />
-                <div className="text-2xl font-bold text-warning" data-testid="stat-warnings">
-                  {uploadStats.warnings}
-                </div>
-                <div className="text-sm text-gray-600">Advertencias</div>
-              </div>
-              <div className="bg-red-50 rounded-lg p-4 text-center">
-                <XCircle className="mx-auto text-error text-2xl mb-2" />
-                <div className="text-2xl font-bold text-error" data-testid="stat-errors">
-                  {uploadStats.errors}
-                </div>
-                <div className="text-sm text-gray-600">Errores</div>
-              </div>
-            </div>
-          )}
-        </CardContent>
-      </Card>
     </div>
   );
 }

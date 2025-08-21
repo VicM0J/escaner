@@ -1,5 +1,6 @@
+
 import pg from "pg";
-import { drizzle } from 'drizzle-orm/neon-serverless';
+import { drizzle } from 'drizzle-orm/node-postgres';
 import * as schema from "@shared/schema";
 
 const { Pool } = pg;
@@ -14,11 +15,7 @@ if (!connectionString) {
 
 export const pool = new Pool({ 
   connectionString: connectionString,
-  ssl: process.env.NODE_ENV === 'production' ? { rejectUnauthorized: false } : false,
-  // Para Render, siempre usar SSL si está en la URL externa
-  ...(connectionString.includes('render.com') && {
-    ssl: { rejectUnauthorized: false }
-  })
+  ssl: false, // No SSL para base de datos local
 });
 
-export const db = drizzle(connectionString, { schema });
+export const db = drizzle(pool, { schema });

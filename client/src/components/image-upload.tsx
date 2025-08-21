@@ -19,7 +19,7 @@ export default function ImageUpload({ garmentCode, onImageUploaded }: ImageUploa
     mutationFn: async (file: File) => {
       const formData = new FormData();
       formData.append('image', file);
-      
+
       const response = await fetch(`/api/garments/${garmentCode}/image`, {
         method: 'POST',
         body: formData,
@@ -38,14 +38,14 @@ export default function ImageUpload({ garmentCode, onImageUploaded }: ImageUploa
         title: "Imagen subida exitosamente",
         description: "La imagen de la prenda ha sido actualizada.",
       });
-      
+
       // Invalidate garment query to refresh data
       queryClient.invalidateQueries({ queryKey: ['/api/garments', garmentCode] });
-      
+
       if (onImageUploaded && data.imageUrl) {
         onImageUploaded(data.imageUrl);
       }
-      
+
       setSelectedFile(null);
     },
     onError: (error: any) => {
@@ -92,8 +92,14 @@ export default function ImageUpload({ garmentCode, onImageUploaded }: ImageUploa
   };
 
   return (
-    <div className="space-y-4">
-      <div className="border-2 border-dashed border-gray-300 rounded-lg p-4 text-center">
+    <div className="space-y-6">
+      <div 
+        className="border-2 border-dashed rounded-xl p-8 text-center transition-all duration-300 hover:shadow-lg"
+        style={{ 
+          borderColor: '#737373',
+          backgroundColor: 'rgba(217, 217, 217, 0.1)'
+        }}
+      >
         <input
           type="file"
           accept="image/*"
@@ -102,16 +108,26 @@ export default function ImageUpload({ garmentCode, onImageUploaded }: ImageUploa
           id={`image-upload-${garmentCode}`}
           data-testid="input-image-file"
         />
-        
+
         <label 
           htmlFor={`image-upload-${garmentCode}`} 
           className="cursor-pointer block"
         >
-          <ImageIcon className="mx-auto h-8 w-8 text-gray-400 mb-2" />
-          <p className="text-sm text-gray-600 mb-2">
+          <ImageIcon 
+            className="mx-auto mb-4" 
+            size={48} 
+            style={{ color: '#737373' }}
+          />
+          <p 
+            className="text-lg font-semibold mb-3"
+            style={{ color: '#2c234e' }}
+          >
             {selectedFile ? selectedFile.name : "Haga clic para seleccionar una imagen"}
           </p>
-          <p className="text-xs text-gray-500">
+          <p 
+            className="text-sm"
+            style={{ color: '#737373' }}
+          >
             PNG, JPG, GIF hasta 5MB
           </p>
         </label>
@@ -121,10 +137,14 @@ export default function ImageUpload({ garmentCode, onImageUploaded }: ImageUploa
         <Button 
           onClick={handleUpload}
           disabled={uploadMutation.isPending}
-          className="w-full"
+          className="w-full py-3 text-lg font-semibold rounded-lg shadow-lg hover:shadow-xl transition-all duration-300 border-0"
+          style={{ 
+            backgroundColor: '#2c234e', 
+            color: '#d9d9d9',
+          }}
           data-testid="button-upload-image"
         >
-          <Upload className="mr-2 h-4 w-4" />
+          <Upload className="mr-3 h-5 w-5" />
           {uploadMutation.isPending ? "Subiendo..." : "Subir Imagen"}
         </Button>
       )}

@@ -12,6 +12,7 @@ export interface IStorage {
   getGarmentByCode(codigo: string): Promise<Garment | undefined>;
   createGarment(garment: InsertGarment): Promise<Garment>;
   createGarments(garments: InsertGarment[]): Promise<Garment[]>;
+  upsertGarments(garments: InsertGarment[]): Promise<{ created: Garment[], updated: Garment[], skipped: number }>;
   getAllGarments(): Promise<Garment[]>;
   deleteAllGarments(): Promise<void>;
   updateGarmentImage(codigo: string, imageUrl: string): Promise<Garment | undefined>;
@@ -60,6 +61,54 @@ export class DatabaseStorage implements IStorage {
       .values(garmentList)
       .returning();
     return created;
+  }
+
+  async upsertGarments(garmentList: InsertGarment[]): Promise<{ created: Garment[], updated: Garment[], skipped: number }> {
+    if (garmentList.length === 0) return { created: [], updated: [], skipped: 0 };
+    
+    const created: Garment[] = [];
+    const updated: Garment[] = [];
+    let skipped = 0;
+
+    for (const garment of garmentList) {
+      try {
+        // Try to insert first
+        const [newGarment] = await db
+          .insert(garments)
+          .values(garment)
+          .returning();
+        created.push(newGarment);
+      } catch (error: any) {
+        // If it's a duplicate key error, update instead
+        if (error.code === '23505') {
+          try {
+            const [updatedGarment] = await db
+              .update(garments)
+              .set({
+                area: garment.area,
+                dama_cab: garment.dama_cab,
+                prenda: garment.prenda,
+                modelo: garment.modelo,
+                tela: garment.tela,
+                color: garment.color,
+                ficha_bordado: garment.ficha_bordado,
+                updatedAt: new Date()
+              })
+              .where(eq(garments.codigo, garment.codigo))
+              .returning();
+            updated.push(updatedGarment);
+          } catch (updateError) {
+            console.error(`Error updating garment with codigo ${garment.codigo}:`, updateError);
+            skipped++;
+          }
+        } else {
+          console.error(`Error processing garment with codigo ${garment.codigo}:`, error);
+          skipped++;
+        }
+      }
+    }
+
+    return { created, updated, skipped };
   }
 
   async getAllGarments(): Promise<Garment[]> {
