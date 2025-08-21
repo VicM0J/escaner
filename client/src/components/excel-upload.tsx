@@ -120,7 +120,7 @@ export default function ExcelUpload() {
 
   const requiredColumns = [
     'CÓDIGO', 'ÁREA', 'DAMA / CAB', 'PRENDA',
-    'MODELO', 'TELA', 'COLOR', 'FICHA DE BORDADO'
+    'MODELO', 'TELA', 'COLOR', 'TALLA', 'FICHA DE BORDADO'
   ];
 
   return (

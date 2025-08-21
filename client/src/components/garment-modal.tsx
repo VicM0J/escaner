@@ -1,4 +1,3 @@
-
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Badge } from "@/components/ui/badge";
 import { Calendar, Image as ImageIcon } from "lucide-react";
@@ -16,37 +15,56 @@ interface GarmentModalProps {
 export default function GarmentModal({ garment, isOpen, onClose }: GarmentModalProps) {
   const barcodeRef = useRef<SVGSVGElement>(null);
 
+  // Internal mapping for tipo_manga determination
+  const TIPOS_MANGA: { [key: string]: string } = {
+    '1': 'Manga Larga',
+    '2': 'Manga Corta', 
+    '3': 'Manga 3/4',
+    '4': 'Manga Junior',
+    'L': 'Largo',
+    'C': 'Corto',
+    'R': 'Recto'
+  };
+
+  // Helper function to determine tipo_manga based on modelo
+  const determineTipoManga = (modelo: string): string => {
+    if (!modelo) return '';
+    const lastChar = modelo.slice(-1).toUpperCase();
+    return TIPOS_MANGA[lastChar] || '';
+  };
+
   useEffect(() => {
     if (garment && barcodeRef.current) {
       try {
         // Limpiar el SVG anterior
         barcodeRef.current.innerHTML = '';
-        
-        // Establecer dimensiones fijas para el SVG
-        barcodeRef.current.setAttribute('width', '200');
-        barcodeRef.current.setAttribute('height', '80');
+
+        // Establecer dimensiones y namespace para el SVG
+        barcodeRef.current.setAttribute('width', '400');
+        barcodeRef.current.setAttribute('height', '160');
         barcodeRef.current.setAttribute('xmlns', 'http://www.w3.org/2000/svg');
-        
+        barcodeRef.current.setAttribute('viewBox', '0 0 400 160');
+
         // Generar el código de barras con configuraciones optimizadas
         JsBarcode(barcodeRef.current, garment.codigo.toString(), {
           format: "CODE39",
-          width: 2,
-          height: 40,
+          width: 4,
+          height: 80,
           displayValue: true,
-          fontSize: 10,
+          fontSize: 18,
           background: "#ffffff",
           lineColor: "#000000",
-          margin: 10,
+          margin: 20,
           textAlign: "center",
           textPosition: "bottom",
-          textMargin: 5,
+          textMargin: 15,
           valid: function(valid) {
             if (!valid) {
               console.error("Invalid barcode format for:", garment.codigo);
             }
           }
         });
-        
+
         console.log("Barcode generated successfully for:", garment.codigo);
       } catch (error) {
         console.error("Error generating barcode:", error);
@@ -118,8 +136,8 @@ export default function GarmentModal({ garment, isOpen, onClose }: GarmentModalP
             <div className="lg:col-span-1 space-y-6">
               <div className="bg-gray-50 rounded-xl p-4 text-center">
                 {garment.imagen_url ? (
-                  <img 
-                    src={garment.imagen_url} 
+                  <img
+                    src={garment.imagen_url}
                     alt={`Imagen de ${garment.prenda} - ${garment.codigo}`}
                     className="w-full h-48 object-cover rounded-lg shadow-md"
                     data-testid="img-garment-photo"
@@ -131,31 +149,20 @@ export default function GarmentModal({ garment, isOpen, onClose }: GarmentModalP
                 )}
                 <p className="text-gray-600 font-medium mt-2">Imagen de la prenda</p>
               </div>
-              
-              {/* Image Upload and Barcode Side by Side */}
-              <div className="grid grid-cols-2 gap-4">
-                {/* Update Image Button */}
-                <div>
-                  <ImageUpload 
-                    garmentCode={garment.codigo} 
-                    onImageUploaded={() => {
-                      // Refresh data will be handled by the mutation
-                    }} 
-                  />
-                </div>
-                
-                {/* Barcode Section */}
-                <div className="bg-white rounded-xl p-3 text-center border shadow-sm">
-                  <p className="text-gray-600 font-medium mb-2 text-sm">Código de Barras</p>
-                  <div className="flex justify-center items-center min-h-[100px] bg-gray-50 rounded border p-2">
-                    <svg 
-                      ref={barcodeRef} 
-                      className="block"
-                      width="200"
-                      height="80"
-                    ></svg>
+
+              {/* Image Upload and Barcode Sections - Full Width */}
+              <div className="space-y-6">
+                {/* Image Upload Section */}
+                <div className="bg-gray-50 rounded-xl p-8 w-full">
+                  <h3 className="text-gray-700 font-semibold text-center mb-6 text-xl">Actualizar Imagen</h3>
+                  <div className="max-w-md mx-auto">
+                    <ImageUpload
+                      garmentCode={garment.codigo}
+                      onImageUploaded={() => {
+                        // Refresh data will be handled by the mutation
+                      }}
+                    />
                   </div>
-                  <p className="text-xs text-gray-500 mt-1">{garment?.codigo}</p>
                 </div>
               </div>
             </div>
@@ -172,7 +179,7 @@ export default function GarmentModal({ garment, isOpen, onClose }: GarmentModalP
                 </div>
 
                 <div>
-                  <span className="text-gray-600 font-medium text-lg">DAMA (Tipo de prenda): </span>
+                  <span className="text-gray-600 font-medium text-lg">Tipo de prenda: </span>
                   <span className="font-bold text-gray-800 text-lg" data-testid="text-garment-category">
                     {garment.dama_cab}
                   </span>
@@ -188,7 +195,7 @@ export default function GarmentModal({ garment, isOpen, onClose }: GarmentModalP
                 <div>
                   <span className="text-gray-600 font-medium text-lg">Prenda: </span>
                   <span className="font-bold text-gray-800 text-lg" data-testid="text-garment-type">
-                    {garment.prenda}
+                    {garment.prenda} {determineTipoManga(garment.modelo)}
                   </span>
                 </div>
               </div>
@@ -204,12 +211,19 @@ export default function GarmentModal({ garment, isOpen, onClose }: GarmentModalP
 
                 <div className="flex items-center">
                   <span className="text-gray-600 font-medium text-lg mr-2">Color: </span>
-                  <div 
+                  <div
                     className={`w-5 h-5 rounded-full mr-3 ${getColorIndicator(garment.color)}`}
                     data-testid="color-indicator"
                   ></div>
                   <span className="font-bold text-gray-800 text-lg" data-testid="text-garment-color">
                     {garment.color}
+                  </span>
+                </div>
+
+                <div>
+                  <span className="text-gray-600 font-medium text-lg">Talla: </span>
+                  <span className="font-bold text-gray-800 text-lg" data-testid="text-garment-size">
+                    {garment.talla}
                   </span>
                 </div>
 
@@ -231,7 +245,7 @@ export default function GarmentModal({ garment, isOpen, onClose }: GarmentModalP
           </div>
         </div>
 
-        
+
       </DialogContent>
     </Dialog>
   );

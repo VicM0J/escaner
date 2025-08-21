@@ -18,6 +18,7 @@ export const garments = pgTable("garments", {
   modelo: text("modelo").notNull(),
   tela: text("tela").notNull(),
   color: text("color").notNull(),
+  talla: text("talla").notNull(),
   ficha_bordado: text("ficha_bordado").notNull(),
   imagen_url: text("imagen_url"), // Campo opcional para la URL de la imagen
   createdAt: timestamp("created_at").defaultNow(),

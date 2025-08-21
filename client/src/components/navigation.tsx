@@ -25,8 +25,7 @@ export default function Navigation({ activeTab, onTabChange }: NavigationProps) 
         <div className="flex justify-between items-center h-16">
           <div className="flex items-center">
             <div className="flex items-center">
-              <Camera className="text-primary text-2xl mr-3" />
-              <h1 className="text-xl font-semibold text-secondary">Sistema Textil</h1>
+              <h1 className="text-xl font-semibold text-secondary">Corporativo JSN Textil</h1>
             </div>
           </div>
           

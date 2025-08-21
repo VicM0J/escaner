@@ -120,7 +120,7 @@ export default function BarcodeScanner({ onGarmentFound }: BarcodeScannerProps) 
                 <div className="w-48 h-48 border-4 border-green-400 rounded-lg flex items-center justify-center mb-4 animate-pulse">
                   <div className="text-center">
                     <div className="text-green-400 text-6xl mb-4">📱</div>
-                    <div className="text-green-400 font-bold text-lg">ESCÁNER SIEMPRE ACTIVO</div>
+                    <div className="text-green-400 font-bold text-lg">ESCÁNER ACTIVO</div>
                   </div>
                 </div>
                 {barcodeBuffer && (
@@ -130,7 +130,7 @@ export default function BarcodeScanner({ onGarmentFound }: BarcodeScannerProps) 
                 )}
               </div>
               <p className="text-white text-sm mt-4">
-                Escanee cualquier código de barras con su dispositivo físico - está siempre listo
+                Escanee cualquier código de barras con su dispositivo físico
               </p>
             </div>
           </div>
@@ -138,7 +138,7 @@ export default function BarcodeScanner({ onGarmentFound }: BarcodeScannerProps) 
           <div className="mt-4 p-3 rounded-lg bg-blue-50 text-primary text-center">
             <div className="flex items-center justify-center">
               <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-primary mr-2"></div>
-              <span data-testid="text-scanner-status">Escáner siempre listo. Use su dispositivo físico para escanear.</span>
+              <span data-testid="text-scanner-status">Esperando Entrada</span>
             </div>
           </div>
         </CardContent>

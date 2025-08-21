@@ -11,8 +11,27 @@ import fs from "fs";
 
 const upload = multer({ storage: multer.memoryStorage() });
 
+// Internal mapping for tipo_manga determination
+const TIPOS_MANGA = {
+  '1': 'Manga Larga',
+  '2': 'Manga Corta', 
+  '3': 'Manga 3/4',
+  '4': 'Manga Junior',
+  'L': 'Largo',
+  'C': 'Corto',
+  'R': 'Recto'
+};
+
+// Helper function to determine tipo_manga based on modelo
+function determineTipoManga(modelo: string): string {
+  if (!modelo) return '';
+  
+  const lastChar = modelo.slice(-1).toUpperCase();
+  return TIPOS_MANGA[lastChar] || '';
+}
+
 // Configure multer for image uploads
-const imageUpload = multer({ 
+const imageUpload = multer({
   storage: multer.diskStorage({
     destination: (req, file, cb) => {
       const uploadDir = path.join(process.cwd(), 'uploads');
@@ -47,18 +66,18 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const garment = await storage.getGarmentByCode(code);
 
       if (!garment) {
-        return res.status(404).json({ 
+        return res.status(404).json({
           message: "Prenda no encontrada",
-          error: "GARMENT_NOT_FOUND" 
+          error: "GARMENT_NOT_FOUND"
         });
       }
 
       res.json(garment);
     } catch (error) {
       console.error("Error fetching garment:", error);
-      res.status(500).json({ 
+      res.status(500).json({
         message: "Error interno del servidor",
-        error: "INTERNAL_ERROR" 
+        error: "INTERNAL_ERROR"
       });
     }
   });
@@ -70,9 +89,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
       res.json(garments);
     } catch (error) {
       console.error("Error fetching garments:", error);
-      res.status(500).json({ 
+      res.status(500).json({
         message: "Error interno del servidor",
-        error: "INTERNAL_ERROR" 
+        error: "INTERNAL_ERROR"
       });
     }
   });
@@ -81,9 +100,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.post("/api/garments/upload", upload.single('file'), async (req, res) => {
     try {
       if (!req.file) {
-        return res.status(400).json({ 
+        return res.status(400).json({
           message: "No se proporcionó archivo",
-          error: "NO_FILE" 
+          error: "NO_FILE"
         });
       }
 
@@ -98,9 +117,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const rawData = XLSX.utils.sheet_to_json(worksheet, { header: 1 });
 
       if (rawData.length < 2) {
-        return res.status(400).json({ 
+        return res.status(400).json({
           message: "El archivo debe contener al menos una fila de datos",
-          error: "INSUFFICIENT_DATA" 
+          error: "INSUFFICIENT_DATA"
         });
       }
 
@@ -108,28 +127,32 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const headers = rawData[0] as string[];
       console.log('Headers found:', headers);
 
-      const columnMap = {
-        codigo: headers.findIndex(h => h?.toUpperCase().includes('CÓDIGO')),
-        area: headers.findIndex(h => h?.toUpperCase().includes('ÁREA')),
-        damaCab: headers.findIndex(h => h?.toUpperCase().includes('DAMA') || h?.toUpperCase().includes('CAB')),
-        prenda: headers.findIndex(h => h?.toUpperCase().includes('PRENDA')),
-        modelo: headers.findIndex(h => h?.toUpperCase().includes('MODELO')),
-        tela: headers.findIndex(h => h?.toUpperCase().includes('TELA')),
-        color: headers.findIndex(h => h?.toUpperCase().includes('COLOR')),
-        ficha: headers.findIndex(h => h?.toUpperCase().includes('FICHA') && h?.toUpperCase().includes('BORDADO'))
-      };
+      const requiredColumns = ['CÓDIGO', 'ÁREA', 'DAMA / CAB', 'PRENDA', 'MODELO', 'TELA', 'COLOR', 'TALLA', 'FICHA DE BORDADO'];
+      const columnMap: any = {};
 
-      // Validate required columns exist
-      const missingColumns = Object.entries(columnMap)
-        .filter(([_, index]) => index === -1)
-        .map(([key]) => key);
+      // Find column indices
+      requiredColumns.forEach(col => {
+        const index = headers.findIndex(h =>
+          h && h.toString().trim().toUpperCase().includes(col.toUpperCase())
+        );
+        if (index === -1) {
+          return res.status(400).json({
+            message: `Columna requerida no encontrada: ${col}`,
+            error: "MISSING_COLUMN"
+          });
+        }
 
-      if (missingColumns.length > 0) {
-        return res.status(400).json({ 
-          message: `Columnas faltantes: ${missingColumns.join(', ')}`,
-          error: "MISSING_COLUMNS" 
-        });
-      }
+        // Map column names to keys
+        if (col === 'CÓDIGO') columnMap.codigo = index;
+        else if (col === 'ÁREA') columnMap.area = index;
+        else if (col === 'DAMA / CAB') columnMap.damaCab = index;
+        else if (col === 'PRENDA') columnMap.prenda = index;
+        else if (col === 'MODELO') columnMap.modelo = index;
+        else if (col === 'TELA') columnMap.tela = index;
+        else if (col === 'COLOR') columnMap.color = index;
+        else if (col === 'TALLA') columnMap.talla = index;
+        else if (col === 'FICHA DE BORDADO') columnMap.ficha = index;
+      });
 
       console.log('First row of data:', rawData[1]);
       console.log('Column indices:', columnMap);
@@ -154,6 +177,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
             modelo: String(row[columnMap.modelo] || '').trim(),
             tela: String(row[columnMap.tela] || '').trim(),
             color: String(row[columnMap.color] || '').trim(),
+            talla: String(row[columnMap.talla] || '').trim(), // Added talla
             ficha_bordado: String(row[columnMap.ficha] || '').trim()
           };
 
@@ -214,9 +238,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
         console.log(`Successfully processed ${totalCreated} new garments, ${totalUpdated} updated garments, ${totalSkipped} skipped`);
       } catch (insertError) {
         console.error('Error processing garments:', insertError);
-        return res.status(500).json({ 
+        return res.status(500).json({
           message: "Error procesando datos en la base de datos",
-          error: "DATABASE_PROCESSING_ERROR" 
+          error: "DATABASE_PROCESSING_ERROR"
         });
       }
 
@@ -231,7 +255,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
       console.log('Final stats:', stats);
 
-      const message = totalCreated > 0 || totalUpdated > 0 
+      const message = totalCreated > 0 || totalUpdated > 0
         ? `Archivo procesado exitosamente: ${totalCreated} nuevos, ${totalUpdated} actualizados${totalSkipped > 0 ? `, ${totalSkipped} omitidos` : ''}`
         : "Archivo procesado, no se realizaron cambios";
 
@@ -243,9 +267,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
     } catch (error) {
       console.error("Error processing Excel file:", error);
-      res.status(500).json({ 
+      res.status(500).json({
         message: "Error procesando el archivo Excel",
-        error: "PROCESSING_ERROR" 
+        error: "PROCESSING_ERROR"
       });
     }
   });
@@ -258,15 +282,15 @@ export async function registerRoutes(app: Express): Promise<Server> {
       res.status(201).json(garment);
     } catch (error) {
       if (error instanceof z.ZodError) {
-        return res.status(400).json({ 
+        return res.status(400).json({
           message: "Datos inválidos",
-          errors: error.errors 
+          errors: error.errors
         });
       }
       console.error("Error creating garment:", error);
-      res.status(500).json({ 
+      res.status(500).json({
         message: "Error interno del servidor",
-        error: "INTERNAL_ERROR" 
+        error: "INTERNAL_ERROR"
       });
     }
   });
@@ -277,9 +301,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const { code } = req.params;
 
       if (!req.file) {
-        return res.status(400).json({ 
+        return res.status(400).json({
           message: "No se proporcionó imagen",
-          error: "NO_IMAGE" 
+          error: "NO_IMAGE"
         });
       }
 
@@ -290,9 +314,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
       if (!updatedGarment) {
         // Delete uploaded file if garment not found
         fs.unlinkSync(req.file.path);
-        return res.status(404).json({ 
+        return res.status(404).json({
           message: "Prenda no encontrada",
-          error: "GARMENT_NOT_FOUND" 
+          error: "GARMENT_NOT_FOUND"
         });
       }
 
@@ -306,9 +330,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
       if (req.file && fs.existsSync(req.file.path)) {
         fs.unlinkSync(req.file.path);
       }
-      res.status(500).json({ 
+      res.status(500).json({
         message: "Error subiendo imagen",
-        error: "UPLOAD_ERROR" 
+        error: "UPLOAD_ERROR"
       });
     }
   });

@@ -119,12 +119,6 @@ export default function ImageUpload({ garmentCode, onImageUploaded }: ImageUploa
             style={{ color: '#737373' }}
           />
           <p 
-            className="text-lg font-semibold mb-3"
-            style={{ color: '#2c234e' }}
-          >
-            {selectedFile ? selectedFile.name : "Haga clic para seleccionar una imagen"}
-          </p>
-          <p 
             className="text-sm"
             style={{ color: '#737373' }}
           >

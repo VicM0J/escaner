@@ -1,3 +1,4 @@
+
 -- ============================
 -- Tabla garments
 -- ============================
@@ -12,6 +13,7 @@ CREATE TABLE IF NOT EXISTS garments (
     modelo TEXT NOT NULL,
     tela TEXT NOT NULL,
     color TEXT NOT NULL,
+    talla TEXT NOT NULL,
     ficha_bordado TEXT NOT NULL,
     imagen_url TEXT,
     created_at TIMESTAMP DEFAULT now(),
