@@ -314,7 +314,11 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   // Serve uploaded images statically
-  app.use('/uploads', express.static(path.join(process.cwd(), 'uploads')));
+  app.use('/uploads', express.static(path.join(process.cwd(), 'uploads'), {
+    setHeaders: (res, path) => {
+      res.setHeader('Cache-Control', 'public, max-age=31536000');
+    }
+  }));
 
   const httpServer = createServer(app);
   return httpServer;

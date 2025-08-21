@@ -1,10 +1,11 @@
+
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Badge } from "@/components/ui/badge";
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { Printer, Edit, Calendar, Image as ImageIcon } from "lucide-react";
+import { Calendar, Image as ImageIcon } from "lucide-react";
 import ImageUpload from "./image-upload";
-import { useState } from "react";
+import { useState, useEffect, useRef } from "react";
 import type { Garment } from "@shared/schema";
+import JsBarcode from "jsbarcode";
 
 interface GarmentModalProps {
   garment: Garment | null;
@@ -13,6 +14,52 @@ interface GarmentModalProps {
 }
 
 export default function GarmentModal({ garment, isOpen, onClose }: GarmentModalProps) {
+  const barcodeRef = useRef<SVGSVGElement>(null);
+
+  useEffect(() => {
+    if (garment && barcodeRef.current) {
+      try {
+        // Limpiar el SVG anterior
+        barcodeRef.current.innerHTML = '';
+        
+        // Establecer dimensiones fijas para el SVG
+        barcodeRef.current.setAttribute('width', '200');
+        barcodeRef.current.setAttribute('height', '80');
+        barcodeRef.current.setAttribute('xmlns', 'http://www.w3.org/2000/svg');
+        
+        // Generar el código de barras con configuraciones optimizadas
+        JsBarcode(barcodeRef.current, garment.codigo.toString(), {
+          format: "CODE39",
+          width: 2,
+          height: 40,
+          displayValue: true,
+          fontSize: 10,
+          background: "#ffffff",
+          lineColor: "#000000",
+          margin: 10,
+          textAlign: "center",
+          textPosition: "bottom",
+          textMargin: 5,
+          valid: function(valid) {
+            if (!valid) {
+              console.error("Invalid barcode format for:", garment.codigo);
+            }
+          }
+        });
+        
+        console.log("Barcode generated successfully for:", garment.codigo);
+      } catch (error) {
+        console.error("Error generating barcode:", error);
+        // Mostrar mensaje de error en el SVG
+        barcodeRef.current.innerHTML = `
+          <text x="100" y="40" text-anchor="middle" fill="red" font-size="12">
+            Error: ${error.message}
+          </text>
+        `;
+      }
+    }
+  }, [garment]);
+
   if (!garment) return null;
 
   const formatDate = (date: Date | null) => {
@@ -47,173 +94,144 @@ export default function GarmentModal({ garment, isOpen, onClose }: GarmentModalP
 
   return (
     <Dialog open={isOpen} onOpenChange={onClose}>
-      <DialogContent className="max-w-4xl max-h-[90vh] overflow-auto" data-testid="modal-garment-info">
+      <DialogContent className="max-w-4xl max-h-[95vh] overflow-auto bg-gradient-to-br from-purple-100 to-pink-100" data-testid="modal-garment-info">
         <DialogHeader>
-          <DialogTitle className="text-xl font-bold text-secondary">
-            Información de la Prenda - {garment.codigo}
-          </DialogTitle>
+          <div className="flex items-center justify-between mb-6">
+            <div className="flex items-center space-x-3">
+              <div className="bg-black text-white px-4 py-2 rounded-full font-bold text-lg">
+                JSN
+              </div>
+              <div className="bg-white rounded-full px-6 py-2 shadow-lg">
+                <span className="text-gray-800 font-semibold">Información de la prenda</span>
+              </div>
+            </div>
+            <div className="text-right">
+              <span className="text-gray-600 font-medium">ID: {garment.codigo}</span>
+            </div>
+          </div>
         </DialogHeader>
 
-        <Tabs defaultValue="info" className="w-full">
-          <TabsList className="grid w-full grid-cols-2">
-            <TabsTrigger value="info">Información</TabsTrigger>
-            <TabsTrigger value="image">Imagen</TabsTrigger>
-          </TabsList>
-
-          <TabsContent value="info" className="space-y-6">
-          {/* Garment Code Header */}
-          <div className="bg-primary rounded-lg text-white p-4 text-center">
-            <div className="text-sm opacity-90">Código de la Prenda</div>
-            <div className="text-2xl font-mono font-bold" data-testid="text-garment-code">
-              {garment.codigo}
-            </div>
-          </div>
-
-          {/* Garment Details Grid */}
-          <div className="grid md:grid-cols-2 gap-6">
-            <div className="space-y-4">
-              <div className="bg-gray-50 rounded-lg p-4">
-                <div className="text-sm font-medium text-gray-500 uppercase tracking-wide mb-1">
-                  Área
-                </div>
-                <div className="text-lg font-semibold text-secondary" data-testid="text-garment-area">
-                  {garment.area}
-                </div>
-              </div>
-
-              <div className="bg-gray-50 rounded-lg p-4">
-                <div className="text-sm font-medium text-gray-500 uppercase tracking-wide mb-1">
-                  Categoría
-                </div>
-                <div className="text-lg font-semibold text-secondary" data-testid="text-garment-category">
-                  {garment.dama_cab}
-                </div>
-              </div>
-
-              <div className="bg-gray-50 rounded-lg p-4">
-                <div className="text-sm font-medium text-gray-500 uppercase tracking-wide mb-1">
-                  Prenda
-                </div>
-                <div className="text-lg font-semibold text-secondary" data-testid="text-garment-type">
-                  {garment.prenda}
-                </div>
-              </div>
-
-              <div className="bg-gray-50 rounded-lg p-4">
-                <div className="text-sm font-medium text-gray-500 uppercase tracking-wide mb-1">
-                  Modelo
-                </div>
-                <div className="text-lg font-semibold text-secondary" data-testid="text-garment-model">
-                  {garment.modelo}
-                </div>
-              </div>
-            </div>
-
-            <div className="space-y-4">
-              <div className="bg-gray-50 rounded-lg p-4">
-                <div className="text-sm font-medium text-gray-500 uppercase tracking-wide mb-1">
-                  Tela
-                </div>
-                <div className="text-lg font-semibold text-secondary" data-testid="text-garment-fabric">
-                  {garment.tela}
-                </div>
-              </div>
-
-              <div className="bg-gray-50 rounded-lg p-4">
-                <div className="text-sm font-medium text-gray-500 uppercase tracking-wide mb-1">
-                  Color
-                </div>
-                <div className="flex items-center">
-                  <div 
-                    className={`w-6 h-6 rounded-full mr-3 ${getColorIndicator(garment.color)}`}
-                    data-testid="color-indicator"
-                  ></div>
-                  <div className="text-lg font-semibold text-secondary" data-testid="text-garment-color">
-                    {garment.color}
-                  </div>
-                </div>
-              </div>
-
-              <div className="bg-gray-50 rounded-lg p-4">
-                <div className="text-sm font-medium text-gray-500 uppercase tracking-wide mb-1">
-                  Ficha de Bordado
-                </div>
-                <div className="text-lg font-semibold text-secondary" data-testid="text-garment-embroidery">
-                  {garment.ficha_bordado}
-                </div>
-              </div>
-
-              {/* Timestamp */}
-              <div className="bg-green-50 rounded-lg p-4">
-                <div className="text-sm font-medium text-success uppercase tracking-wide mb-1 flex items-center">
-                  <Calendar className="mr-1 h-4 w-4" />
-                  Última Actualización
-                </div>
-                <div className="text-sm text-gray-600" data-testid="text-garment-updated">
-                  {formatDate(garment.updatedAt)}
-                </div>
-              </div>
-            </div>
-          </div>
-
-            {/* Action Buttons */}
-            <div className="flex flex-col sm:flex-row gap-3">
-              <Button 
-                className="flex-1 bg-primary hover:bg-primary/90 text-white font-semibold"
-                data-testid="button-print-label"
-              >
-                <Printer className="mr-2 h-4 w-4" />
-                Imprimir Etiqueta
-              </Button>
-              <Button 
-                variant="outline"
-                className="flex-1 font-semibold"
-                data-testid="button-edit-info"
-              >
-                <Edit className="mr-2 h-4 w-4" />
-                Editar Información
-              </Button>
-            </div>
-          </TabsContent>
-
-          <TabsContent value="image" className="space-y-6">
-            {/* Image Display */}
-            <div className="text-center">
-              {garment.imagen_url ? (
-                <div className="space-y-4">
+        {/* Main Content Section */}
+        <div className="bg-white rounded-3xl p-8 shadow-lg mb-6">
+          <div className="grid lg:grid-cols-3 gap-8">
+            {/* Image and Barcode Section */}
+            <div className="lg:col-span-1 space-y-6">
+              <div className="bg-gray-50 rounded-xl p-4 text-center">
+                {garment.imagen_url ? (
                   <img 
                     src={garment.imagen_url} 
                     alt={`Imagen de ${garment.prenda} - ${garment.codigo}`}
-                    className="max-w-full max-h-96 mx-auto rounded-lg shadow-lg"
+                    className="w-full h-48 object-cover rounded-lg shadow-md"
                     data-testid="img-garment-photo"
                   />
-                  <p className="text-sm text-gray-600">
-                    Imagen actual de la prenda
-                  </p>
+                ) : (
+                  <div className="w-full h-48 bg-black rounded-lg flex items-center justify-center">
+                    <ImageIcon className="h-16 w-16 text-white" />
+                  </div>
+                )}
+                <p className="text-gray-600 font-medium mt-2">Imagen de la prenda</p>
+              </div>
+              
+              {/* Image Upload and Barcode Side by Side */}
+              <div className="grid grid-cols-2 gap-4">
+                {/* Update Image Button */}
+                <div>
+                  <ImageUpload 
+                    garmentCode={garment.codigo} 
+                    onImageUploaded={() => {
+                      // Refresh data will be handled by the mutation
+                    }} 
+                  />
                 </div>
-              ) : (
-                <div className="bg-gray-100 rounded-lg p-8 text-center">
-                  <ImageIcon className="mx-auto h-16 w-16 text-gray-400 mb-4" />
-                  <p className="text-gray-600 mb-2">No hay imagen disponible</p>
-                  <p className="text-sm text-gray-500">
-                    Suba una imagen de referencia para esta prenda
-                  </p>
+                
+                {/* Barcode Section */}
+                <div className="bg-white rounded-xl p-3 text-center border shadow-sm">
+                  <p className="text-gray-600 font-medium mb-2 text-sm">Código de Barras</p>
+                  <div className="flex justify-center items-center min-h-[100px] bg-gray-50 rounded border p-2">
+                    <svg 
+                      ref={barcodeRef} 
+                      className="block"
+                      width="200"
+                      height="80"
+                    ></svg>
+                  </div>
+                  <p className="text-xs text-gray-500 mt-1">{garment?.codigo}</p>
                 </div>
-              )}
+              </div>
             </div>
 
-            {/* Image Upload */}
-            <div className="border-t pt-6">
-              <h3 className="text-lg font-semibold mb-4">Subir nueva imagen</h3>
-              <ImageUpload 
-                garmentCode={garment.codigo} 
-                onImageUploaded={() => {
-                  // Refresh data will be handled by the mutation
-                }} 
-              />
+            {/* Information Section */}
+            <div className="lg:col-span-2 grid grid-cols-2 gap-8">
+              {/* Left Column */}
+              <div className="space-y-6">
+                <div>
+                  <span className="text-gray-600 font-medium text-lg">Área: </span>
+                  <span className="font-bold text-gray-800 text-lg" data-testid="text-garment-area">
+                    {garment.area}
+                  </span>
+                </div>
+
+                <div>
+                  <span className="text-gray-600 font-medium text-lg">DAMA (Tipo de prenda): </span>
+                  <span className="font-bold text-gray-800 text-lg" data-testid="text-garment-category">
+                    {garment.dama_cab}
+                  </span>
+                </div>
+
+                <div>
+                  <span className="text-gray-600 font-medium text-lg">Modelo: </span>
+                  <span className="font-bold text-gray-800 text-lg" data-testid="text-garment-model">
+                    {garment.modelo}
+                  </span>
+                </div>
+
+                <div>
+                  <span className="text-gray-600 font-medium text-lg">Prenda: </span>
+                  <span className="font-bold text-gray-800 text-lg" data-testid="text-garment-type">
+                    {garment.prenda}
+                  </span>
+                </div>
+              </div>
+
+              {/* Right Column */}
+              <div className="space-y-6">
+                <div>
+                  <span className="text-gray-600 font-medium text-lg">Tela: </span>
+                  <span className="font-bold text-gray-800 text-lg" data-testid="text-garment-fabric">
+                    {garment.tela}
+                  </span>
+                </div>
+
+                <div className="flex items-center">
+                  <span className="text-gray-600 font-medium text-lg mr-2">Color: </span>
+                  <div 
+                    className={`w-5 h-5 rounded-full mr-3 ${getColorIndicator(garment.color)}`}
+                    data-testid="color-indicator"
+                  ></div>
+                  <span className="font-bold text-gray-800 text-lg" data-testid="text-garment-color">
+                    {garment.color}
+                  </span>
+                </div>
+
+                <div>
+                  <span className="text-gray-600 font-medium text-lg">Ficha de Bordado: </span>
+                  <span className="font-bold text-gray-800 text-lg" data-testid="text-garment-embroidery">
+                    {garment.ficha_bordado}
+                  </span>
+                </div>
+
+                <div className="mt-8">
+                  <span className="text-gray-600 font-medium text-sm">Última Actualización: </span>
+                  <span className="text-sm text-gray-600" data-testid="text-garment-updated">
+                    {formatDate(garment.updatedAt)}
+                  </span>
+                </div>
+              </div>
             </div>
-          </TabsContent>
-        </Tabs>
+          </div>
+        </div>
+
+        
       </DialogContent>
     </Dialog>
   );
